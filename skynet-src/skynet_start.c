@@ -63,6 +63,7 @@ wakeup(struct monitor *m, int busy) {
 static void *
 thread_socket(void *p) {
 	struct monitor * m = p;
+	pthread_setname_np(pthread_self(), "socket");
 	skynet_initthread(THREAD_SOCKET);
 	skynet_handle_register_thread();
 	for (;;) {
@@ -96,6 +97,7 @@ thread_monitor(void *p) {
 	struct monitor * m = p;
 	int i;
 	int n = m->count;
+	pthread_setname_np(pthread_self(), "monitor");
 	skynet_initthread(THREAD_MONITOR);
 	skynet_handle_register_thread();
 	for (;;) {
@@ -130,6 +132,7 @@ signal_hup() {
 static void *
 thread_timer(void *p) {
 	struct monitor * m = p;
+	pthread_setname_np(pthread_self(), "timer");
 	skynet_initthread(THREAD_TIMER);
 	skynet_handle_register_thread();
 	for (;;) {
@@ -160,6 +163,7 @@ thread_worker(void *p) {
 	int weight = wp->weight;
 	struct monitor *m = wp->m;
 	struct skynet_monitor *sm = m->m[id];
+	pthread_setname_np(pthread_self(), "worker");
 	skynet_initthread(THREAD_WORKER);
 	skynet_handle_register_thread();
 	struct message_queue * q = NULL;
