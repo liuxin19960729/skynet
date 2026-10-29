@@ -53,6 +53,7 @@ struct callback_context {
 static int
 _cb(struct skynet_context * context, void * ud, int type, int session, uint32_t source, const void * msg, size_t sz) {
 	struct callback_context *cb_ctx = (struct callback_context *)ud;
+	//栈信息 顶 [callback,traceback] 底
 	lua_State *L = cb_ctx->L;
 	int trace = 1;
 	int r;
@@ -64,6 +65,7 @@ _cb(struct skynet_context * context, void * ud, int type, int session, uint32_t 
 	lua_pushinteger(L, session);
 	lua_pushinteger(L, source);
 
+	printf("lua-skynet.c _cb\n");
 	r = lua_pcall(L, 5, 0 , trace);
 
 	if (r == LUA_OK) {
@@ -100,7 +102,7 @@ clear_last_context(lua_State *L) {
 		lua_pushnil(L);
 		lua_setiuservalue(L, -2, 2);
 	}
-	lua_pop(L, 1);
+	lua_pop(L, 1); // 从栈中弹出1个元素
 }
 
 static int
@@ -120,20 +122,33 @@ _forward_pre(struct skynet_context *context, void *ud, int type, int session, ui
 }
 
 static int
-lcallback(lua_State *L) {
+lcallback(lua_State *L) {//注册回掉函数
+	printf("lua-skynet.c lcallback\n");
 	struct skynet_context * context = lua_touserdata(L, lua_upvalueindex(1));
 	int forward = lua_toboolean(L, 2);
-	luaL_checktype(L,1,LUA_TFUNCTION);
-	lua_settop(L,1);
+	luaL_checktype(L,1,LUA_TFUNCTION);// 检测第一个个参数是否是函数类型
+	lua_settop(L,1);//设置参数只有一个
+	//1.创建大小为 sizeof(*cb_ctx) 大小的内存
+	//2.为内存分配2个 uservalue 槽位 并压入栈
+	// cb_ctx 指向userdata 内部内存
 	struct callback_context * cb_ctx = (struct callback_context *)lua_newuserdatauv(L, sizeof(*cb_ctx), 2);
+	// 穿件一个lua 协程 协程对象并压入L栈
+	// 新协程有自己独立的栈
 	cb_ctx->L = lua_newthread(L);
+	// 压入新的协程栈
 	lua_pushcfunction(cb_ctx->L, traceback);
+	// -2 表示userdata 位置 1 表示 槽位 将从栈顶弹出一个值设置到第一槽位
 	lua_setiuservalue(L, -2, 1);
+	// 获取表中的 old callback_context 放入栈顶
 	lua_getfield(L, LUA_REGISTRYINDEX, "callback_context");
+	// 	// -2 表示userdata 位置 2表示 槽位 将从栈顶弹出一个值设置到第二槽位
 	lua_setiuservalue(L, -2, 2);
+	// 将 栈顶userdata{1:thread,2:callback_context} 放入注册表中 并弹出栈顶
 	lua_setfield(L, LUA_REGISTRYINDEX, "callback_context");
+	// 将一个栈里面的东西弹出 1 哥值放入cb_ctx->L 栈里面
 	lua_xmove(L, cb_ctx->L, 1);
-
+	// L []
+	// cb_ctx->L [callback,traceback]
 	skynet_callback(context, cb_ctx, (forward)?(_forward_pre):(_cb_pre));
 	return 0;
 }
@@ -497,7 +512,7 @@ ltrace(lua_State *L) {
 
 LUAMOD_API int
 luaopen_skynet_core(lua_State *L) {
-	luaL_checkversion(L);
+	luaL_checkversion(L);// 检测Lua 虚拟机版本
 
 	luaL_Reg l[] = {
 		{ "send" , lsend },
@@ -524,17 +539,22 @@ luaopen_skynet_core(lua_State *L) {
 		{ "hpc", lhpc },	// getHPCounter
 		{ NULL, NULL },
 	};
-
+	// 创建一张新的空表压栈      元素条数 (l+l2)-2 
 	lua_createtable(L, 0, sizeof(l)/sizeof(l[0]) + sizeof(l2)/sizeof(l2[0]) -2);
-
+	// 从LUA 注册表 读取 skynet_context 压入栈
 	lua_getfield(L, LUA_REGISTRYINDEX, "skynet_context");
+    
+	// 顶; [skynet_context,table] 底
+
 	struct skynet_context *ctx = lua_touserdata(L,-1);
 	if (ctx == NULL) {
 		return luaL_error(L, "Init skynet context first");
 	}
 
-
-	luaL_setfuncs(L,l,1);
+	//  nup 1 表示有一个upvalue 并且 upvalue 为  skynet_context *ctx
+	// 注册完了 upvalue 从栈中弹出
+	// 如果要获取 upvalue 绑定的值  lua_upvalueindex(index) 来获取 
+	luaL_setfuncs(L,l,1); 
 
 	luaL_setfuncs(L,l2,0);
 

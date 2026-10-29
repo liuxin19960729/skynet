@@ -367,12 +367,13 @@ end
 
 -- coroutine reuse
 
-local coroutine_pool = setmetatable({}, { __mode = "kv" })
+local coroutine_pool = setmetatable({}, { __mode = "kv" }) --weak map 
 
 local function co_create(f)
-	local co = tremove(coroutine_pool)
+	local co = tremove(coroutine_pool) 
 	if co == nil then
 		co = coroutine_create(function(...)
+			print("skynet.lua co_create coroutine_create",...)
 			f(...)
 			while true do
 				local session = session_coroutine_id[co]
@@ -496,6 +497,7 @@ skynet.trace_timeout(false)	-- turn off by default
 
 function skynet.timeout(ti, func)
 	local session = auxtimeout(ti)
+	print("skynet.lua skynet.timeout:session "..session)
 	assert(session)
 	local co = co_create_for_timeout(func, ti)
 	assert(session_id_coroutine[session] == nil)
@@ -964,6 +966,7 @@ local function raw_dispatch_message(prototype, msg, sz, session, source)
 end
 
 function skynet.dispatch_message(...)
+	print("skynet.lua skynet.dispatch_message args:",...)
 	local succ, err = pcall(raw_dispatch_message,...)
 	while true do
 		if fork_queue.h > fork_queue.t then
@@ -1078,8 +1081,11 @@ function skynet.init_service(start)
 end
 
 function skynet.start(start_func)
+	print("skynet.lua skynet.start:before c.callback(skynet.dispatch_message)")
 	c.callback(skynet.dispatch_message)
+	print("skynet.lua skynet.start:after c.callback(skynet.dispatch_message)")
 	init_thread = skynet.timeout(0, function()
+		print("skynet.lua skynet.start:timeout(0,func)")
 		skynet.init_service(start_func)
 		init_thread = nil
 	end)
