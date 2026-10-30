@@ -14,7 +14,7 @@ struct skynet_env {
 };
 
 static struct skynet_env *E = NULL;
-
+/**从配置文件读取 */
 const char * 
 skynet_getenv(const char *key) {
 	SPIN_LOCK(E)
@@ -29,7 +29,7 @@ skynet_getenv(const char *key) {
 
 	return result;
 }
-
+/**设置到lua全局配置 */
 void 
 skynet_setenv(const char *key, const char *value) {
 	SPIN_LOCK(E)

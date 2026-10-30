@@ -14,9 +14,9 @@
 #include <assert.h>
 
 #ifndef SKYNET_MAXTHREAD
-#define SKYNET_MAXTHREAD 1024
+#define SKYNET_MAXTHREAD 1024  //提供线程最大限制 方式线程创建过多资源消耗过大
 #endif
-
+/**获取选项值 opt 是默认值 如果不存在使用默认值 */
 static int
 optint(const char *key, int opt) {
 	const char * str = skynet_getenv(key);
@@ -29,6 +29,7 @@ optint(const char *key, int opt) {
 	return strtol(str, NULL, 10);
 }
 
+/**获取opt boolean 配置  如果不存在使用默认值 */
 static int
 optboolean(const char *key, int opt) {
 	const char * str = skynet_getenv(key);
@@ -38,7 +39,7 @@ optboolean(const char *key, int opt) {
 	}
 	return strcmp(str,"true")==0;
 }
-
+/**获取opt 字符串 配置 如果不存在使用默认值*/
 static const char *
 optstring(const char *key,const char * opt) {
 	const char * str = skynet_getenv(key);
@@ -51,21 +52,23 @@ optstring(const char *key,const char * opt) {
 	}
 	return str;
 }
-
+/**将Lua配置表转换为Skynet环境变量 */
 static void
 _init_env(lua_State *L) {
 	lua_pushnil(L);  /* first key */
-	while (lua_next(L, -2) != 0) {
+	// 栈 顶[nil,table]底
+	while (lua_next(L, -2) != 0) {// [table_value,table_key,table]
 		int keyt = lua_type(L, -2);
-		if (keyt != LUA_TSTRING) {
+		if (keyt != LUA_TSTRING) {//table_key 是否是字符串
 			fprintf(stderr, "Invalid config table\n");
 			exit(1);
 		}
 		const char * key = lua_tostring(L,-2);
-		if (lua_type(L,-1) == LUA_TBOOLEAN) {
+		//判断talbe_value 的类型
+		if (lua_type(L,-1) == LUA_TBOOLEAN) {// boolean 类型
 			int b = lua_toboolean(L,-1);
 			skynet_setenv(key,b ? "true" : "false" );
-		} else {
+		} else {// string类型
 			const char * value = lua_tostring(L,-1);
 			if (value == NULL) {
 				fprintf(stderr, "Invalid config table key = %s\n", key);
@@ -73,9 +76,9 @@ _init_env(lua_State *L) {
 			}
 			skynet_setenv(key,value);
 		}
-		lua_pop(L,1);
+		lua_pop(L,1);// 弹出 talbe_value 保留 table_key 获取下一个值
 	}
-	lua_pop(L,1);
+	lua_pop(L,1);// 弹出 talbe_key 值
 }
 
 int sigign() {
@@ -86,7 +89,7 @@ int sigign() {
 	sigaction(SIGPIPE, &sa, 0);
 	return 0;
 }
-
+/**配置加载器 */
 static const char * load_config = "\
 	local result = {}\n\
 	local function getenv(name) return assert(os.getenv(name), [[os.getenv() failed: ]] .. name) end\n\
@@ -128,7 +131,7 @@ main(int argc, char *argv[]) {
 			"usage: skynet configfilename\n");
 		return 1;
 	}
-
+	// 全局初始化
 	skynet_globalinit();
 	skynet_env_init();
 

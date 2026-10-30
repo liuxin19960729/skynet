@@ -293,9 +293,9 @@ skynet_start(struct skynet_config * config) {
 		fprintf(stderr, "Can't launch %s service\n", config->logservice);
 		exit(1);
 	}
-
+	// logger 服务创建
 	skynet_handle_namehandle(logger_handle, "logger");
-
+	// 创建bootstarp 服务
 	bootstrap(logger_handle, config->bootstrap);
 
 	start(config->thread);
