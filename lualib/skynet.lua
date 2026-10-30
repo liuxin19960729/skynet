@@ -136,6 +136,7 @@ do ---- avoid session rewind conflict
 	end
 
 	local function auxtimeout_checkconflict(timeout)
+		print("skynet.lua auxtimeout_checkconflict timeout:"..timeout)
 		local session = cintcommand("TIMEOUT", timeout)
 		checkconflict(session)
 		return session
@@ -157,6 +158,7 @@ do ---- avoid session rewind conflict
 	end
 
 	local function auxtimeout_checkrewind(timeout)
+		print("skynet.lua auxtimeout_checkrewind timeout:"..timeout)
 		local session = cintcommand("TIMEOUT", timeout)
 		if session and session > dangerzone_low and session <= dangerzone_up then
 			-- enter dangerzone

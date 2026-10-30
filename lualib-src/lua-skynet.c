@@ -57,7 +57,7 @@ _cb(struct skynet_context * context, void * ud, int type, int session, uint32_t 
 	lua_State *L = cb_ctx->L;
 	int trace = 1;
 	int r;
-	lua_pushvalue(L,2);
+	lua_pushvalue(L,2);//[2,callback,traceback]
 
 	lua_pushinteger(L, type);
 	lua_pushlightuserdata(L, (void *)msg);
@@ -66,7 +66,7 @@ _cb(struct skynet_context * context, void * ud, int type, int session, uint32_t 
 	lua_pushinteger(L, source);
 
 	printf("lua-skynet.c _cb\n");
-	r = lua_pcall(L, 5, 0 , trace);
+	r = lua_pcall(L, 5, 0 , trace);//[source,session,sz,msg,type,2,callback,traceback]
 
 	if (r == LUA_OK) {
 		return 0;
@@ -100,7 +100,7 @@ static void
 clear_last_context(lua_State *L) {
 	if (lua_getfield(L, LUA_REGISTRYINDEX, "callback_context") == LUA_TUSERDATA) {
 		lua_pushnil(L);
-		lua_setiuservalue(L, -2, 2);
+		lua_setiuservalue(L, -2, 2);// userdata{1:thread,2:nil}
 	}
 	lua_pop(L, 1); // 从栈中弹出1个元素
 }
